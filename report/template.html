@@ -235,7 +235,7 @@ function table(el, cols, rows, empty, rowAttr) {
     rows.map((r, i) => `<tr ${rowAttr ? rowAttr(r) : ''}>${cols.map(c => `<td class="${c.cls || ''}">${c.v(r, i)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 const projCols = [
-  { h: 'Project', v: p => `<a href="${projUrl(p)}" target="_blank" rel="noopener">${esc(p.name)}</a><div class="meta">${esc(p.type)} · created ${fdate(p.created)}</div>` },
+  { h: 'Project', v: p => `<a href="${projUrl(p)}" target="_blank" rel="noopener">${esc(p.name)}</a><div class="meta">${esc(p.type)} · created ${fdate(p.created)}${p.estimated ? ' · contributor details appear once MapSwipe publishes this project's data page' : ''}</div>` },
   { h: 'Status', v: p => `<span class="pill ${p.status}">${p.status}</span>` },
   { h: 'Progress', v: p => `<span class="prog"><span style="width:${Math.round(p.progress * 100)}%"></span></span>${Math.round(p.progress * 100)}%` },
   { h: 'Tasks', cls: 'num', v: p => fmt(p.results) },

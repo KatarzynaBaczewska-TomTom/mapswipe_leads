@@ -3,6 +3,7 @@ name: MapSwipe daily report
 on:
   schedule:
     - cron: '0 5 * * *'   # every day at 05:00 UTC (07:00 in Poland in summer, 06:00 in winter)
+    - cron: '0 13 * * *'  # second run, picks up projects MapSwipe publishes later in the day
   workflow_dispatch:       # "Run workflow" button in the Actions tab
   push:
     branches: [main]
@@ -36,7 +37,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add report/snapshots.json
           git diff --cached --quiet || git commit -m "Update MapSwipe snapshot $(date -u +%F)"
-          git push
+          git pull --rebase -q && git push
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
