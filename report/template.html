@@ -52,7 +52,8 @@ label.inline { display: inline-flex; gap: 8px; align-items: center; font-size: .
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
 .tile .k { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.tile .v { font: 500 1.6rem/1.2 var(--mono); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .v { font: 500 1.6rem/1.2 var(--mono); margin-top: 4px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .v.name { font: 600 1.1rem/1.3 var(--body); white-space: normal; overflow-wrap: anywhere; padding-block: 5px; }
 .tile .n { font-size: .8rem; color: var(--muted); margin-top: 2px; }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; min-width: 0; }
@@ -67,6 +68,11 @@ label.inline { display: inline-flex; gap: 8px; align-items: center; font-size: .
 .chart .bar { fill: var(--accent); }
 .chart .bar.partial { fill: var(--partial); }
 .chart .bar:hover { opacity: .8; }
+.chart .bar.dim { opacity: .3; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .bar { cursor: pointer; }
+.wrap > *, .panel > *, .card > * { min-width: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .legend { display: flex; gap: 16px; font-size: .8rem; color: var(--muted); flex-wrap: wrap; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 
@@ -111,10 +117,16 @@ footer { color: var(--muted); font-size: .8rem; border-top: 1px solid var(--line
 
   <section class="panel" id="p-tomtom" role="tabpanel" aria-labelledby="tab-tomtom">
     <div class="toolbar">
-      <div class="seg" id="range-tomtom" aria-label="Time range">
-        <button data-r="30" aria-pressed="false">Last 30 days</button>
-        <button data-r="90" aria-pressed="false">Last 90 days</button>
-        <button data-r="all" aria-pressed="true">All time</button>
+      <div class="filters">
+        <div class="seg" id="range-tomtom" aria-label="Time range">
+          <button data-r="day" aria-pressed="false">Last day</button>
+          <button data-r="30" aria-pressed="false">Last 30 days</button>
+          <button data-r="90" aria-pressed="false">Last 90 days</button>
+          <button data-r="all" aria-pressed="true">All time</button>
+        </div>
+        <label class="inline" id="day-tomtom-wrap" hidden>Day
+          <select id="day-tomtom"></select>
+        </label>
       </div>
       <label class="inline">Project
         <select id="proj-tomtom"><option value="">All TomTom projects</option></select>
@@ -122,7 +134,7 @@ footer { color: var(--muted); font-size: .8rem; border-top: 1px solid var(--line
     </div>
     <div class="tiles" id="tiles-tomtom"></div>
     <div class="card">
-      <div class="card-head"><h2>Tasks reviewed per day</h2><div class="legend"><span><i style="background:var(--accent)"></i>Tasks reviewed</span><span><i style="background:var(--partial)"></i>Today so far</span></div></div>
+      <div class="card-head"><h2>Tasks reviewed per day</h2><div class="legend" id="legend-tomtom"></div></div>
       <div class="chart" id="chart-tomtom"></div>
     </div>
     <div class="two">
@@ -131,8 +143,8 @@ footer { color: var(--muted); font-size: .8rem; border-top: 1px solid var(--line
         <div class="tbl" id="top-tomtom"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h2>Top contributor each day</h2></div>
-        <div class="tbl" id="daily-tomtom"></div>
+        <div class="card-head"><h2 id="side-tomtom-title"></h2></div>
+        <div class="tbl" id="side-tomtom"></div>
       </div>
     </div>
     <div class="card">
@@ -143,14 +155,23 @@ footer { color: var(--muted); font-size: .8rem; border-top: 1px solid var(--line
 
   <section class="panel" id="p-all" role="tabpanel" aria-labelledby="tab-all" hidden>
     <div class="toolbar">
+      <div class="filters">
+        <div class="seg" id="range-all" aria-label="Time range">
+          <button data-r="day" aria-pressed="false">Last day</button>
+          <button data-r="7" aria-pressed="false">Last 7 days</button>
+          <button data-r="30" aria-pressed="true">Last 30 days</button>
+        </div>
+        <label class="inline" id="day-all-wrap" hidden>Day
+          <select id="day-all"></select>
+        </label>
+      </div>
       <label class="inline">Organization
         <select id="org-all"><option value="">All organizations</option></select>
       </label>
-      <span class="meta">Last 30 days</span>
     </div>
     <div class="tiles" id="tiles-all"></div>
     <div class="card">
-      <div class="card-head"><h2 id="chart-all-title">Tasks reviewed per day</h2><div class="legend"><span><i style="background:var(--accent)"></i>Tasks reviewed</span><span><i style="background:var(--partial)"></i>Today so far</span></div></div>
+      <div class="card-head"><h2 id="chart-all-title">Tasks reviewed per day</h2><div class="legend" id="legend-all"></div></div>
       <div class="chart" id="chart-all"></div>
     </div>
     <div class="card" id="orgs-card">
@@ -159,24 +180,23 @@ footer { color: var(--muted); font-size: .8rem; border-top: 1px solid var(--line
     </div>
     <div class="two">
       <div class="card">
-        <div class="card-head"><h2>Top contributors</h2></div>
-        <p class="note">Tasks each person reviewed in projects that were active in the last 30 days (project lifetime totals).</p>
+        <div class="card-head"><h2>Top contributors</h2><span class="meta" id="top-all-meta"></span></div>
         <div class="tbl" id="top-all"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h2>Busiest days</h2></div>
-        <div class="tbl" id="days-all"></div>
+        <div class="card-head"><h2 id="side-all-title"></h2></div>
+        <div class="tbl" id="side-all"></div>
       </div>
     </div>
     <div class="card">
-      <h2>Projects active in the last 30 days</h2>
+      <h2 id="projects-all-title">Projects</h2>
       <div class="tbl" id="projects-all"></div>
     </div>
   </section>
 
   <footer>
-    Source: <a href="https://mapswipe.org/en/data/" target="_blank" rel="noopener">MapSwipe open data</a> (projects overview, per-project history, users and results exports).
-    One task is one map tile or feature reviewed by one volunteer. Days are in UTC; today's bar covers only the hours before the refresh.
+    Source: <a href="https://mapswipe.org/en/data/" target="_blank" rel="noopener">MapSwipe open data</a> (projects overview, per-project history and results exports).
+    One task is one map tile or feature reviewed by one volunteer. Days are in UTC; today covers only the hours before the refresh.
     <span id="est-note"></span>
   </footer>
 </div>
@@ -188,26 +208,51 @@ const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fdate = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const sdate = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const wdate = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const projUrl = (p) => `https://mapswipe.org/en/projects/${p.fid}/`;
+const plural = (n, w) => `${fmt(n)} ${w}${n === 1 ? '' : 's'}`;
 
 const TODAY = DATA.days[DATA.days.length - 1];
 const YESTERDAY = addDays(TODAY, -1);
+const FROM30 = DATA.days[0];
 const isFocus = (p) => /tomtom/i.test(p.org);
-const byFid = Object.fromEntries(DATA.projects.map(p => [p.fid, p]));
 $('stamp').textContent = new Date(DATA.generatedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
 
+function dayRange(from, to) { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; }
+const dayLabel = (d) => d === TODAY ? `Today so far · ${sdate(d)}` : d === YESTERDAY ? `Yesterday · ${wdate(d)}` : wdate(d);
+
+// Tasks per day from the project history files: { day: tasks }
 function dailyTotals(projects, from, to) {
   const m = {};
-  for (const p of projects) for (const [d, n, u] of (DATA.history[p.fid] || [])) {
-    if (d < from || d > to) continue;
-    (m[d] ||= { tasks: 0, users: 0 }); m[d].tasks += n; m[d].users += u;
-  }
+  for (const p of projects) for (const [d, n] of (DATA.history[p.fid] || [])) if (d >= from && d <= to) m[d] = (m[d] || 0) + n;
   return m;
 }
-function dayRange(from, to) { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; }
+function tasksByProject(projects, from, to) {
+  const m = {};
+  for (const p of projects) for (const [d, n] of (DATA.history[p.fid] || [])) if (d >= from && d <= to) m[p.fid] = (m[p.fid] || 0) + n;
+  return m;
+}
+// Per-volunteer rows [day, nameIndex, projectId, tasks] for the given projects and period.
+function volunteerRows(fids, from, to) { return DATA.daily.filter(([d, , f]) => fids.has(f) && d >= from && d <= to); }
+function leaderboard(rows) {
+  const m = new Map();
+  for (const [d, u, f, n] of rows) {
+    let o = m.get(u); if (!o) m.set(u, o = { name: DATA.names[u], tasks: 0, projects: new Set(), days: new Set(), last: '' });
+    o.tasks += n; o.projects.add(f); o.days.add(d); if (d > o.last) o.last = d;
+  }
+  return [...m.values()].sort((a, b) => b.tasks - a.tasks);
+}
+function topPerDay(rows) {
+  const per = {};
+  for (const [d, u, , n] of rows) { const o = (per[d] ||= new Map()); o.set(u, (o.get(u) || 0) + n); }
+  return Object.entries(per).sort((a, b) => b[0].localeCompare(a[0])).map(([d, m]) => {
+    const [bu, best] = [...m.entries()].sort((a, b) => b[1] - a[1])[0];
+    return { d, total: [...m.values()].reduce((s, v) => s + v, 0), users: m.size, bestName: DATA.names[bu], best };
+  });
+}
 
-function barChart(el, days, values) {
+function barChart(el, days, values, selected) {
   const W = 960, H = 260, L = 56, R = 12, T = 14, B = 34;
   const max = Math.max(1, ...values);
   const step = niceStep(max / 4), top = Math.ceil(max / step) * step;
@@ -218,157 +263,196 @@ function barChart(el, days, values) {
   const every = Math.ceil(days.length / 10);
   days.forEach((d, i) => {
     const x = L + i * bw, v = values[i], h = y(0) - y(v);
-    if (v > 0) s += `<rect class="bar${d === TODAY ? ' partial' : ''}" x="${x + bw * 0.15}" y="${y(v)}" width="${Math.max(1, bw * 0.7)}" height="${Math.max(h, 1)}" rx="2"><title>${fdate(d)}: ${fmt(v)} tasks</title></rect>`;
+    const cls = ['bar', d === TODAY ? 'partial' : '', selected && d !== selected ? 'dim' : ''].join(' ');
+    s += `<rect class="hit" data-d="${d}" x="${x}" y="${T}" width="${bw}" height="${H - T - B}"><title>${fdate(d)}: ${fmt(v)} tasks</title></rect>`;
+    if (v > 0) s += `<rect class="${cls}" data-d="${d}" x="${x + bw * 0.15}" y="${y(v)}" width="${Math.max(1, bw * 0.7)}" height="${Math.max(h, 1)}" rx="2"><title>${fdate(d)}: ${fmt(v)} tasks</title></rect>`;
     if (i % every === 0 || i === days.length - 1 && days.length <= 40) s += `<text x="${x + bw / 2}" y="${H - 12}" text-anchor="middle">${sdate(d)}</text>`;
   });
   el.innerHTML = s + '</svg>';
 }
 function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x || 1))); const f = x / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }
 function fmtShort(v) { return v >= 1e6 ? (v / 1e6).toFixed(v % 1e6 ? 1 : 0) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(v % 1e3 ? 1 : 0) + 'k' : String(v); }
+function legend(el, dayMode) {
+  el.innerHTML = '<span><i style="background:var(--accent)"></i>Tasks reviewed</span><span><i style="background:var(--partial)"></i>Today so far</span>'
+    + (dayMode ? '<span>Select a bar to see that day</span>' : '<span>Select a bar to open that day</span>');
+}
 
 function tiles(el, items) {
-  el.innerHTML = items.map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n || '&nbsp;'}</div></div>`).join('');
+  el.innerHTML = items.map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v${/^[\d,–]+$/.test(v) ? '' : ' name'}">${v}</div><div class="n">${n || '&nbsp;'}</div></div>`).join('');
 }
 function table(el, cols, rows, empty, rowAttr) {
   if (!rows.length) { el.innerHTML = `<div class="empty">${empty}</div>`; return; }
   el.innerHTML = `<table><thead><tr>${cols.map(c => `<th class="${c.cls || ''}">${c.h}</th>`).join('')}</tr></thead><tbody>${
     rows.map((r, i) => `<tr ${rowAttr ? rowAttr(r) : ''}>${cols.map(c => `<td class="${c.cls || ''}">${c.v(r, i)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
-const projCols = [
+const projCols = (periodLabel, byProj) => [
   { h: 'Project', v: p => `<a href="${projUrl(p)}" target="_blank" rel="noopener">${esc(p.name)}</a><div class="meta">${esc(p.type)} · created ${fdate(p.created)}${p.estimated ? ' · contributor details appear once MapSwipe publishes the data page for this project' : ''}</div>` },
   { h: 'Status', v: p => `<span class="pill ${p.status}">${p.status}</span>` },
   { h: 'Progress', v: p => `<span class="prog"><span style="width:${Math.round(p.progress * 100)}%"></span></span>${Math.round(p.progress * 100)}%` },
-  { h: 'Tasks', cls: 'num', v: p => fmt(p.results) },
+  { h: periodLabel, cls: 'num', v: p => byProj[p.fid] ? fmt(byProj[p.fid]) : '–' },
+  { h: 'Tasks, all time', cls: 'num', v: p => fmt(p.results) },
   { h: 'Contributors', cls: 'num', v: p => fmt(p.users) },
   { h: 'Last activity', v: p => p.last ? fdate(p.last) : '–' },
 ];
+const topCols = (dayMode) => [
+  { h: '#', cls: 'rank', v: (r, i) => i + 1 },
+  { h: 'Contributor', v: r => esc(r.name) },
+  { h: 'Tasks', cls: 'num', v: r => fmt(r.tasks) },
+  { h: 'Projects', cls: 'num', v: r => r.projects.size },
+  ...(dayMode ? [] : [{ h: 'Days active', cls: 'num', v: r => r.days.size }, { h: 'Last active', v: r => fdate(r.last) }]),
+];
+const perDayCols = [
+  { h: 'Day', v: r => `<a href="#" data-day="${r.d}">${fdate(r.d)}</a>` },
+  { h: 'Tasks', cls: 'num', v: r => fmt(r.total) },
+  { h: 'People', cls: 'num', v: r => fmt(r.users) },
+  { h: 'Top contributor', v: r => `${esc(r.bestName)} <span class="meta">(${fmt(r.best)})</span>` },
+];
+
+/* ---------- shared panel logic (range + day picker) ---------- */
+function setupPanel(key, defaultRange, dayOptions, render) {
+  const st = { range: defaultRange, day: YESTERDAY };
+  const sel = $('day-' + key);
+  sel.innerHTML = dayOptions.map(d => `<option value="${d}">${dayLabel(d)}</option>`).join('');
+  sel.value = st.day;
+  const apply = () => {
+    for (const b of $('range-' + key).children) b.setAttribute('aria-pressed', String(b.dataset.r === st.range));
+    $('day-' + key + '-wrap').hidden = st.range !== 'day';
+    render(st);
+    if (!$('p-' + key).hidden) syncHash(key);
+  };
+  const openDay = (d) => { if (!d) return; st.range = 'day'; st.day = d; if (![...sel.options].some(o => o.value === d)) sel.insertAdjacentHTML('afterbegin', `<option value="${d}">${dayLabel(d)}</option>`); sel.value = d; apply(); };
+  $('range-' + key).addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { st.range = b.dataset.r; apply(); } });
+  sel.addEventListener('change', () => { st.day = sel.value; apply(); });
+  $('chart-' + key).addEventListener('click', (e) => { const r = e.target.closest('[data-d]'); if (r) openDay(r.dataset.d); });
+  $('p-' + key).addEventListener('click', (e) => { const a = e.target.closest('a[data-day]'); if (a) { e.preventDefault(); openDay(a.dataset.day); } });
+  return { st, apply };
+}
 
 /* ---------- TomTom tab ---------- */
 const focusProjects = DATA.projects.filter(isFocus).sort((a, b) => b.created.localeCompare(a.created));
 for (const p of focusProjects) $('proj-tomtom').insertAdjacentHTML('beforeend', `<option value="${p.fid}">${esc(p.name)}</option>`);
-let tRange = 'all';
+const focusFids = new Set(focusProjects.map(p => p.fid));
+const focusDays = new Set(DATA.days);
+for (const p of focusProjects) for (const [d, n] of (DATA.history[p.fid] || [])) if (n > 0) focusDays.add(d);
 
-function renderTomTom() {
+const tomtom = setupPanel('tomtom', 'all', [...focusDays].sort().reverse(), (st) => {
   const sel = $('proj-tomtom').value;
   const ps = sel ? focusProjects.filter(p => p.fid === sel) : focusProjects;
   const fids = new Set(ps.map(p => p.fid));
+  const dayMode = st.range === 'day';
   const firstDay = ps.map(p => p.created).filter(Boolean).sort()[0] || TODAY;
-  const from = tRange === 'all' ? firstDay : addDays(TODAY, -(+tRange - 1));
-  const days = dayRange(from < TODAY ? from : addDays(TODAY, -29), TODAY);
-  const tot = dailyTotals(ps, days[0], TODAY);
-  barChart($('chart-tomtom'), days, days.map(d => tot[d]?.tasks || 0));
+  const from = dayMode ? st.day : st.range === 'all' ? firstDay : addDays(TODAY, -(+st.range - 1));
+  const to = dayMode ? st.day : TODAY;
+  const chartFrom = dayMode ? (st.day < FROM30 ? addDays(st.day, -14) : FROM30) : (from < FROM30 ? from : FROM30);
+  const chartTo = dayMode && st.day < FROM30 ? addDays(st.day, 15) : TODAY;
+  const chartDays = dayRange(chartFrom, chartTo < TODAY ? chartTo : TODAY);
+  const tot = dailyTotals(ps, chartDays[0], TODAY);
+  barChart($('chart-tomtom'), chartDays, chartDays.map(d => tot[d] || 0), dayMode ? st.day : null);
+  legend($('legend-tomtom'), dayMode);
 
-  const rows = DATA.focusDaily.filter(([d, , f]) => fids.has(f) && d >= days[0]);
-  const people = {};
-  for (const [d, name, f, n] of rows) {
-    const o = (people[name] ||= { name, tasks: 0, projects: new Set(), days: new Set(), last: '' });
-    o.tasks += n; o.projects.add(f); o.days.add(d); if (d > o.last) o.last = d;
-  }
-  const top = Object.values(people).sort((a, b) => b.tasks - a.tasks);
-  const sum = (from) => Object.entries(tot).filter(([d]) => d >= from).reduce((s, [, v]) => s + v.tasks, 0);
-  const allTime = ps.reduce((s, p) => s + p.results, 0);
-  const active = ps.filter(p => p.status === 'Published').length;
+  const rows = volunteerRows(fids, from, to);
+  const top = leaderboard(rows);
+  const byProj = tasksByProject(ps, from, to);
+  const periodTasks = Object.values(byProj).reduce((s, v) => s + v, 0);
+  const activePs = ps.filter(p => byProj[p.fid] > 0);
+  const periodName = dayMode ? dayLabel(st.day) : st.range === 'all' ? 'All time' : `Last ${st.range} days`;
   tiles($('tiles-tomtom'), [
-    ['Yesterday', fmt(tot[YESTERDAY]?.tasks || 0), `tasks · ${fdate(YESTERDAY)}`],
-    ['Last 7 days', fmt(sum(addDays(TODAY, -6))), 'tasks reviewed'],
-    ['All time', fmt(allTime), `tasks in ${ps.length} project${ps.length === 1 ? '' : 's'}`],
-    ['Contributors', fmt(top.length), tRange === 'all' ? `${active} project${active === 1 ? '' : 's'} live now` : 'in selected period'],
+    ['Tasks reviewed', fmt(periodTasks), periodName],
+    ['Contributors', fmt(top.length), dayMode ? 'people active that day' : 'people in this period'],
+    ['Active projects', fmt(activePs.length), `of ${plural(ps.length, 'project')}`],
+    ['Top contributor', top[0] ? esc(top[0].name) : '–', top[0] ? plural(top[0].tasks, 'task') : 'no contributions'],
   ]);
+  $('top-tomtom-meta').textContent = periodName;
+  table($('top-tomtom'), topCols(dayMode), top.slice(0, 15), dayMode ? 'Nobody reviewed TomTom tasks on this day.' : 'No contributions in this period.');
 
-  $('top-tomtom-meta').textContent = tRange === 'all' ? 'All time' : `Last ${tRange} days`;
-  table($('top-tomtom'), [
-    { h: '#', cls: 'rank', v: (r, i) => i + 1 },
-    { h: 'Contributor', v: r => esc(r.name) },
-    { h: 'Tasks', cls: 'num', v: r => fmt(r.tasks) },
-    { h: 'Days active', cls: 'num', v: r => r.days.size },
-    { h: 'Last active', v: r => fdate(r.last) },
-  ], top.slice(0, 15), 'No contributions in this period.');
-
-  const perDay = {};
-  for (const [d, name, , n] of rows) { const o = (perDay[d] ||= {}); o[name] = (o[name] || 0) + n; }
-  const dayRows = Object.entries(perDay).sort((a, b) => b[0].localeCompare(a[0])).map(([d, m]) => {
-    const [bestName, best] = Object.entries(m).sort((a, b) => b[1] - a[1])[0];
-    return { d, total: Object.values(m).reduce((s, v) => s + v, 0), users: Object.keys(m).length, bestName, best };
-  });
-  table($('daily-tomtom'), [
-    { h: 'Day', v: r => fdate(r.d) },
-    { h: 'Tasks', cls: 'num', v: r => fmt(r.total) },
-    { h: 'People', cls: 'num', v: r => r.users },
-    { h: 'Top contributor', v: r => `${esc(r.bestName)} <span class="meta">(${fmt(r.best)})</span>` },
-  ], dayRows.slice(0, 15), 'No contributions in this period.');
-
-  table($('projects-tomtom'), projCols, ps, 'No TomTom projects found.');
-}
-$('range-tomtom').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  tRange = b.dataset.r;
-  for (const x of $('range-tomtom').children) x.setAttribute('aria-pressed', String(x === b));
-  renderTomTom();
+  if (dayMode) {
+    $('side-tomtom-title').textContent = 'Tasks by project';
+    const perProj = {};
+    for (const [, u, f, n] of rows) { const o = (perProj[f] ||= { tasks: 0, users: new Set() }); o.tasks += n; o.users.add(u); }
+    table($('side-tomtom'), [
+      { h: 'Project', v: p => esc(p.name) },
+      { h: 'Tasks', cls: 'num', v: p => fmt(byProj[p.fid]) },
+      { h: 'People', cls: 'num', v: p => perProj[p.fid] ? fmt(perProj[p.fid].users.size) : '–' },
+    ], activePs.sort((a, b) => byProj[b.fid] - byProj[a.fid]), 'No TomTom project had activity on this day.');
+  } else {
+    $('side-tomtom-title').textContent = 'Top contributor each day';
+    table($('side-tomtom'), perDayCols, topPerDay(rows).slice(0, 15), 'No contributions in this period.');
+  }
+  table($('projects-tomtom'), projCols(dayMode ? 'Tasks that day' : 'Tasks in period', byProj), ps, 'No TomTom projects found.');
 });
-$('proj-tomtom').addEventListener('change', renderTomTom);
+$('proj-tomtom').addEventListener('change', tomtom.apply);
 
 /* ---------- All organizations tab ---------- */
-const FROM30 = DATA.days[0];
-const orgStats = {};
+const orgMeta = {};
 for (const p of DATA.projects) {
-  const o = (orgStats[p.org] ||= { org: p.org, projects: 0, live: 0, active: 0, allTime: 0, recent: 0 });
-  o.projects++; o.allTime += p.results;
-  if (p.status === 'Published') o.live++;
-  if (p.last >= FROM30) o.active++;
+  const o = (orgMeta[p.org] ||= { org: p.org, projects: 0, live: 0, recent: 0 });
+  o.projects++; if (p.status === 'Published') o.live++;
   for (const [d, n] of (DATA.history[p.fid] || [])) if (d >= FROM30) o.recent += n;
 }
-const orgList = Object.values(orgStats).sort((a, b) => b.recent - a.recent || b.allTime - a.allTime);
-for (const o of orgList) $('org-all').insertAdjacentHTML('beforeend', `<option value="${esc(o.org)}">${esc(o.org)}</option>`);
+for (const o of Object.values(orgMeta).sort((a, b) => b.recent - a.recent || a.org.localeCompare(b.org)))
+  $('org-all').insertAdjacentHTML('beforeend', `<option value="${esc(o.org)}">${esc(o.org)}</option>`);
 
-function renderAll() {
+const all = setupPanel('all', '30', [...DATA.days].reverse(), (st) => {
   const org = $('org-all').value;
   const ps = DATA.projects.filter(p => !org || p.org === org);
-  const recentPs = ps.filter(p => p.last >= FROM30).sort((a, b) => b.last.localeCompare(a.last) || b.results - a.results);
+  const dayMode = st.range === 'day';
+  const from = dayMode ? st.day : addDays(TODAY, -(+st.range - 1));
+  const to = dayMode ? st.day : TODAY;
   const tot = dailyTotals(ps, FROM30, TODAY);
-  barChart($('chart-all'), DATA.days, DATA.days.map(d => tot[d]?.tasks || 0));
+  barChart($('chart-all'), DATA.days, DATA.days.map(d => tot[d] || 0), dayMode ? st.day : null);
+  legend($('legend-all'), dayMode);
   $('chart-all-title').textContent = `Tasks reviewed per day${org ? ' · ' + org : ''}`;
-  const sum = (from) => Object.entries(tot).filter(([d]) => d >= from).reduce((s, [, v]) => s + v.tasks, 0);
+
+  const byProj = tasksByProject(ps, from, to);
+  const activePs = ps.filter(p => byProj[p.fid] > 0).sort((a, b) => byProj[b.fid] - byProj[a.fid]);
+  const rows = volunteerRows(new Set(ps.map(p => p.fid)), from, to);
+  const top = leaderboard(rows);
+  const periodTasks = Object.values(byProj).reduce((s, v) => s + v, 0);
+  const periodName = dayMode ? dayLabel(st.day) : `Last ${st.range} days`;
   tiles($('tiles-all'), [
-    ['Yesterday', fmt(tot[YESTERDAY]?.tasks || 0), `tasks · ${fdate(YESTERDAY)}`],
-    ['Last 7 days', fmt(sum(addDays(TODAY, -6))), 'tasks reviewed'],
-    ['Last 30 days', fmt(sum(FROM30)), 'tasks reviewed'],
-    ['Active projects', fmt(recentPs.length), `${ps.filter(p => p.status === 'Published').length} live now`],
+    ['Tasks reviewed', fmt(periodTasks), periodName],
+    ['Contributors', fmt(top.length), dayMode ? 'people active that day' : 'people in this period'],
+    ['Active projects', fmt(activePs.length), `${fmt(ps.filter(p => p.status === 'Published').length)} live now`],
+    ['Top contributor', top[0] ? esc(top[0].name) : '–', top[0] ? plural(top[0].tasks, 'task') : 'no contributions'],
   ]);
 
   $('orgs-card').hidden = !!org;
-  table($('orgs-all'), [
-    { h: 'Organization', v: o => esc(o.org) },
-    { h: 'Tasks, last 30 days', cls: 'num', v: o => fmt(o.recent) },
-    { h: 'Active projects', cls: 'num', v: o => o.active },
-    { h: 'Live now', cls: 'num', v: o => o.live },
-    { h: 'All projects', cls: 'num', v: o => o.projects },
-    { h: 'Tasks, all time', cls: 'num', v: o => fmt(o.allTime) },
-  ], orgList.filter(o => o.active > 0),'No activity in the last 30 days.',
-  o => `class="click" tabindex="0" data-org="${esc(o.org)}"`);
-
-  const people = {};
-  for (const p of recentPs) for (const [name, n] of (DATA.users[p.fid] || [])) {
-    const o = (people[name] ||= { name, tasks: 0, projects: 0 }); o.tasks += n; o.projects++;
+  if (!org) {
+    const per = {};
+    for (const p of activePs) { const o = (per[p.org] ||= { org: p.org, tasks: 0, active: 0, users: new Set() }); o.tasks += byProj[p.fid]; o.active++; }
+    const fidOrg = Object.fromEntries(activePs.map(p => [p.fid, p.org]));
+    for (const [, u, f] of rows) if (per[fidOrg[f]]) per[fidOrg[f]].users.add(u);
+    table($('orgs-all'), [
+      { h: 'Organization', v: o => esc(o.org) },
+      { h: dayMode ? 'Tasks that day' : 'Tasks in period', cls: 'num', v: o => fmt(o.tasks) },
+      { h: 'Contributors', cls: 'num', v: o => fmt(o.users.size) },
+      { h: 'Active projects', cls: 'num', v: o => o.active },
+      { h: 'Live now', cls: 'num', v: o => orgMeta[o.org].live },
+      { h: 'All projects', cls: 'num', v: o => orgMeta[o.org].projects },
+    ], Object.values(per).sort((a, b) => b.tasks - a.tasks), dayMode ? 'No activity on this day.' : 'No activity in this period.',
+    o => `class="click" tabindex="0" data-org="${esc(o.org)}"`);
   }
-  table($('top-all'), [
-    { h: '#', cls: 'rank', v: (r, i) => i + 1 },
-    { h: 'Contributor', v: r => esc(r.name) },
-    { h: 'Tasks', cls: 'num', v: r => fmt(r.tasks) },
-    { h: 'Projects', cls: 'num', v: r => r.projects },
-  ], Object.values(people).sort((a, b) => b.tasks - a.tasks).slice(0, 15), 'No contributor data for this selection.');
 
-  const busiest = Object.entries(tot).filter(([, v]) => v.tasks > 0).sort((a, b) => b[1].tasks - a[1].tasks).slice(0, 10);
-  table($('days-all'), [
-    { h: 'Day', v: ([d]) => fdate(d) + (d === TODAY ? ' <span class="meta">(so far)</span>' : '') },
-    { h: 'Tasks', cls: 'num', v: ([, v]) => fmt(v.tasks) },
-    { h: 'Contributors*', cls: 'num', v: ([, v]) => v.users ? fmt(v.users) : '–' },
-  ], busiest, 'No activity in the last 30 days.');
-
-  table($('projects-all'), [{ h: 'Organization', v: p => esc(p.org) }, ...projCols], recentPs, 'No projects were active in the last 30 days.');
-}
-$('org-all').addEventListener('change', renderAll);
-$('orgs-all').addEventListener('click', (e) => { const r = e.target.closest('tr[data-org]'); if (r) { $('org-all').value = r.dataset.org; renderAll(); } });
-$('orgs-all').addEventListener('keydown', (e) => { const r = e.target.closest('tr[data-org]'); if (r && e.key === 'Enter') { $('org-all').value = r.dataset.org; renderAll(); } });
+  $('top-all-meta').textContent = periodName;
+  table($('top-all'), topCols(dayMode), top.slice(0, 15), 'No contributor data for this selection.');
+  if (dayMode) {
+    $('side-all-title').textContent = 'Most active projects';
+    table($('side-all'), [
+      { h: 'Project', v: p => `${esc(p.name)}${org ? '' : `<div class="meta">${esc(p.org)}</div>`}` },
+      { h: 'Tasks', cls: 'num', v: p => fmt(byProj[p.fid]) },
+    ], activePs.slice(0, 10), 'No project had activity on this day.');
+  } else {
+    $('side-all-title').textContent = 'Top contributor each day';
+    table($('side-all'), perDayCols, topPerDay(rows), 'No contributions in this period.');
+  }
+  $('projects-all-title').textContent = dayMode ? `Projects active on ${fdate(st.day)}` : `Projects active in the last ${st.range} days`;
+  table($('projects-all'), [{ h: 'Organization', v: p => esc(p.org) }, ...projCols(dayMode ? 'Tasks that day' : 'Tasks in period', byProj)], activePs,
+    dayMode ? 'No project had activity on this day.' : 'No projects were active in this period.');
+});
+const pickOrg = (r) => { $('org-all').value = r.dataset.org; all.apply(); };
+$('org-all').addEventListener('change', all.apply);
+$('orgs-all').addEventListener('click', (e) => { const r = e.target.closest('tr[data-org]'); if (r) pickOrg(r); });
+$('orgs-all').addEventListener('keydown', (e) => { const r = e.target.closest('tr[data-org]'); if (r && e.key === 'Enter') pickOrg(r); });
 
 /* ---------- tabs ---------- */
 function showTab(name) {
@@ -377,18 +461,25 @@ function showTab(name) {
     $('p-' + t).hidden = t !== name;
   }
   try { localStorage.setItem('tab', name); } catch (e) {}
-  history.replaceState(null, '', '#' + name);
+  syncHash(name);
+}
+// Keep the address bar shareable: #tomtom, #all, or #tomtom-day / #all-day for the Last day view.
+function syncHash(name) {
+  const panel = name === 'all' ? all : tomtom;
+  history.replaceState(null, '', '#' + name + (panel && panel.st.range === 'day' ? '-day' : ''));
 }
 $('tab-tomtom').onclick = () => showTab('tomtom');
 $('tab-all').onclick = () => showTab('all');
-let start = location.hash === '#all' ? 'all' : location.hash === '#tomtom' ? 'tomtom' : null;
+// Deep links: #tomtom, #all, #tomtom-day, #all-day (open the Last day view).
+const [hashTab, hashView] = location.hash.slice(1).split('-');
+let start = hashTab === 'all' || hashTab === 'tomtom' ? hashTab : null;
 if (!start) { try { start = localStorage.getItem('tab'); } catch (e) {} }
+if (hashView === 'day') (hashTab === 'all' ? all : tomtom).st.range = 'day';
 const est = DATA.projects.filter(p => p.estimated).length;
-if (est) $('est-note').textContent = `${est} project${est === 1 ? ' is' : 's are'} not yet listed on the MapSwipe website; ${est === 1 ? 'its' : 'their'} daily numbers come from day-to-day changes in project totals. *Contributors per day are summed across projects.`;
-else $('est-note').textContent = '*Contributors per day are summed across projects.';
+if (est) $('est-note').textContent = `${est} project${est === 1 ? ' is' : 's are'} not yet listed on the MapSwipe website; ${est === 1 ? 'its' : 'their'} daily numbers come from day-to-day changes in project totals and ${est === 1 ? 'its' : 'their'} contributors are not counted yet.`;
 
-renderTomTom();
-renderAll();
+tomtom.apply();
+all.apply();
 showTab(start === 'all' ? 'all' : 'tomtom');
 </script>
 </body>

@@ -3,6 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const readline = require('readline');
+const { Readable } = require('stream');
 
 const FOCUS_ORG = /tomtom/i;
 const WINDOW_DAYS = 30;
@@ -43,6 +45,35 @@ async function get(url, { gz = false, retries = 3 } = {}) {
   }
 }
 
+// One CSV line -> fields (handles quoted fields; results files have no line breaks inside fields).
+function splitLine(line) {
+  const out = []; let field = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === '"') { if (line[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { out.push(field); field = ''; }
+    else field += c;
+  }
+  out.push(field.replace(/\r$/, ''));
+  return out;
+}
+
+// Streams a (gzipped) results export and calls fn(row) for each line, without loading it all into memory.
+async function streamCsv(url, fn) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+  let body = Readable.fromWeb(res.body);
+  if (url.endsWith('.gz')) body = body.pipe(zlib.createGunzip());
+  let head = null;
+  for await (const line of readline.createInterface({ input: body, crlfDelay: Infinity })) {
+    if (!line) continue;
+    const r = splitLine(line);
+    if (!head) { head = Object.fromEntries(r.map((h, i) => [h, i])); continue; }
+    fn(r, head);
+  }
+}
+
 async function pool(items, n, fn) {
   const out = new Array(items.length);
   let i = 0;
@@ -54,7 +85,7 @@ async function pool(items, n, fn) {
 
 const day = (d) => d.toISOString().slice(0, 10);
 // Some volunteers use an e-mail address as username; don't print it in a shared report.
-const who = (x) => (x.username || x.user_id.slice(0, 8)).replace(/^([^@\s]{1,3})[^@\s]*@\S+$/, '$1…@…');
+const who = (x) => (x.username || (x.user_id || '').slice(0, 8)).replace(/^([^@\s]{1,3})[^@\s]*@\S+$/, '$1…@…');
 
 async function main() {
   const now = new Date();
@@ -76,7 +107,8 @@ async function main() {
   const detailed = projects.filter(p => p.last >= since || FOCUS_ORG.test(p.org));
   console.log(`${projects.length} projects, fetching details for ${detailed.length}...`);
 
-  const history = {}, usersByProject = {}, focusDaily = [];
+  const history = {}, daily = [], names = [], nameIdx = new Map();
+  const nameId = (n) => { if (!nameIdx.has(n)) { nameIdx.set(n, names.length); names.push(n); } return nameIdx.get(n); };
   await pool(detailed, 6, async (p) => {
     try {
       const html = await get(projectPage(p.fid));
@@ -84,18 +116,19 @@ async function main() {
         const m = html.match(new RegExp(`https://backend\\.mapswipe\\.org/media/project/\\d+/asset/export/[A-Z0-9]+/${kind}_\\d+\\.csv(\\.gz)?`));
         return m && m[0];
       };
-      const h = link('history'), u = link('users'), r = link('results');
+      const h = link('history'), r = link('results');
       if (h) history[p.fid] = parseCsv(await get(h, { gz: h.endsWith('.gz') }))
         .map(x => [x.day, +x.number_of_results || 0, +x.number_of_users || 0]);
-      if (u) usersByProject[p.fid] = parseCsv(await get(u, { gz: u.endsWith('.gz') }))
-        .map(x => [who(x), +x.total_contributions || 0]);
-      if (r && FOCUS_ORG.test(p.org)) {
-        const counts = {};
-        for (const x of parseCsv(await get(r, { gz: r.endsWith('.gz') }))) {
-          const k = `${x.timestamp.slice(0, 10)}|${who(x)}`;
-          counts[k] = (counts[k] || 0) + 1;
-        }
-        for (const [k, n] of Object.entries(counts)) { const [d, name] = k.split('|'); focusDaily.push([d, name, p.fid, n]); }
+      // Tasks per volunteer per day: all days for the focus org, the report window for everyone else.
+      if (r) {
+        const from = FOCUS_ORG.test(p.org) ? '' : since, counts = new Map();
+        await streamCsv(r, (row, c) => {
+          const d = row[c.timestamp].slice(0, 10);
+          if (d < from) return;
+          const k = d + '|' + who({ username: row[c.username], user_id: row[c.user_id] });
+          counts.set(k, (counts.get(k) || 0) + 1);
+        });
+        for (const [k, n] of counts) { const i = k.indexOf('|'); daily.push([k.slice(0, i), nameId(k.slice(i + 1)), p.fid, n]); }
       }
     } catch (e) {
       console.warn(`  ! ${p.fid} ${p.name}: ${e.message}`);
@@ -128,8 +161,8 @@ async function main() {
     focusOrg: 'TomTom',
     projects,
     history,
-    users: usersByProject,
-    focusDaily,
+    names,
+    daily,
   };
 
   const tpl = fs.readFileSync(path.join(OUT_DIR, 'template.html'), 'utf8');
