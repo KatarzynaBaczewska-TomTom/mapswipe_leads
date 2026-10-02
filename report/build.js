@@ -134,6 +134,8 @@ async function main() {
 
   const tpl = fs.readFileSync(path.join(OUT_DIR, 'template.html'), 'utf8');
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
+  // Fail the build (and keep the previous live page) if the page script has a syntax error.
+  for (const [, code] of tpl.matchAll(/<script>([\s\S]*?)<\/script>/g)) new (require('vm').Script)(code);
   fs.mkdirSync(SITE_DIR, { recursive: true });
   fs.writeFileSync(path.join(SITE_DIR, 'index.html'), tpl.replace('/*__DATA__*/null', json));
   console.log(`Wrote _site/index.html (${(json.length / 1024).toFixed(0)} KB of data)`);
